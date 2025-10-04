@@ -1,0 +1,39 @@
+{
+  "name": "random-rain2025",
+  "version": "1.0.0",
+  "description": "Befunge93 Two Random Rain Poetry",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:hardhat": "hardhat run scripts/deploy.ts --network hardhat",
+    "node": "hardhat node"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/avcdsld/random-rain2025.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/avcdsld/random-rain2025/issues"
+  },
+  "homepage": "https://github.com/avcdsld/random-rain2025#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.1.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.4.0",
+    "@types/mocha": "^10.0.10",
+    "ethers": "^6.15.0",
+    "hardhat": "^2.26.3",
+    "mocha": "^11.7.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "viem": "^2.37.8"
+  }
+}
