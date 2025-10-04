@@ -43,7 +43,7 @@
     <canvas id="canvas"></canvas>
     
     <script>
-        class Befunge {
+        class BefungeInterpreter {
             constructor(w, h) {
                 this.w = w; this.h = h;
                 this.p = Array(h).fill().map(() => Array(w).fill(' '));
@@ -76,7 +76,7 @@
                         '<': () => [this.dx, this.dy] = [-1, 0],
                         '^': () => [this.dx, this.dy] = [0, -1],
                         'v': () => [this.dx, this.dy] = [0, 1],
-                        '?': () => [this.dx, this.dy] = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random() * 4)],
+                        '?': () => { const r = Math.random(); [this.dx, this.dy] = [[1, 0], [-1, 0], [0, 1], [0, -1]][r < 0.3 ? 0 : r < 0.5 ? 1 : r < 0.8 ? 2 : 3]; },
                         '_': () => [this.dx, this.dy] = [this.pop() ? -1 : 1, 0],
                         '|': () => [this.dx, this.dy] = [0, this.pop() ? -1 : 1],
                         '"': () => this.str = true,
@@ -115,7 +115,7 @@
             }
         }
 
-        class Renderer {
+        class BefungeRenderer {
             constructor(id, w, h) {
                 this.c = document.getElementById(id).getContext('2d');
                 this.w = w; this.h = h;
@@ -166,17 +166,15 @@
                 const status = `IP:(${s.x.toString().padStart(2)}, ${s.y.toString().padStart(2)}) Dir:(${s.dx>=0?'+':''}${s.dx},${s.dy>=0?'+':''}${s.dy}) Cmd:'${cmd}'`;
                 this.c.fillText(status, m, sy);
                 if (s.outputBuffer) {
-                    this.c.fillText(`Output: ${s.outputBuffer}`, m + this.c.measureText(status).width, sy);
+                    this.c.fillText(` Output: ${s.outputBuffer}`, m + this.c.measureText(status).width, sy);
                 }
             }
         }
 
         const WIDTH = 80;
-        const HEIGHT = 27;
+        const HEIGHT = 25;
         
         const sourceCode = `vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-                                                                                
-?                                                                              
                                                    ?                ?           
                      ?    ?                                                     
                                        ?              ?                         
@@ -187,23 +185,23 @@
                                  ?                                    ?         
                                   ?    ?                                        
              ?                 ?                                                
-                  ?          ?                                                  
+                  ?          ?            ?                                     
                     ?       ?                                                   
      ?                                                  ?                       
-                  ?                                       ?                     
+                  ?                   ?                   ?                     
         ?                                                            ?          
-                                                        ?                      ?
+                                              ?         ?                      ?
                          ?                                        ?             
     ?                                              ?                            
         ?    ?                                                                  
- ?                                              ?                               
-                                           ?                 ?                  
-                                     >>>>>>>>>v                                  
-vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"Rain."<vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+ ?                                ?             ?                               
+                 ?         ?               ?        ?        ?                  
+                                 >>>>>>>>>>>>>v                                   
+vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"Rain."<<vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 ????????????????????????????????????<>,#$:_@ >??????????????????????????????????`;
         
-        const b = new Befunge(WIDTH, HEIGHT);
-        const r = new Renderer('canvas', WIDTH, HEIGHT);
+        const b = new BefungeInterpreter(WIDTH, HEIGHT);
+        const r = new BefungeRenderer('canvas', WIDTH, HEIGHT);
         
         b.load(sourceCode);
         
