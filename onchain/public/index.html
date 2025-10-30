@@ -28,19 +28,30 @@
             min-height: 100vh;
             overflow: hidden;
         }
-        canvas {
+        pre {
             display: block;
-            image-rendering: pixelated;
-            image-rendering: -moz-crisp-edges;
-            image-rendering: crisp-edges;
-            font-family: 'DejaVu Sans Mono';
+            font-family: 'DejaVu Sans Mono', monospace;
             font-weight: normal;
             font-size: 12px;
+            color: #fff;
+            background: #000;
+            margin: 0;
+            padding: 3px 12px 8px 12px;
+            white-space: pre;
+            overflow: auto;
+            max-width: 100vw;
+            max-height: 100vh;
+            line-height: 1.2;
+            box-sizing: border-box;
+        }
+        .ip-highlight {
+            background: #fff;
+            color: #000;
         }
     </style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
+    <pre id="canvas"></pre>
     
     <script>
         class BefungeInterpreter {
@@ -117,64 +128,74 @@
 
         class BefungeRenderer {
             constructor(id, w, h) {
-                this.c = document.getElementById(id).getContext('2d');
+                this.elem = document.getElementById(id);
                 this.w = w; this.h = h;
+                this.updateFontSize();
+            }
+            
+            updateFontSize() {
+                const baseFontSize = 12;
+                const charWidth = baseFontSize * 0.6;
+                const lineHeightRatio = 1.2;
+                const baseLineHeight = baseFontSize * lineHeightRatio;
+                
+                const paddingX = 24;
+                const paddingTop = 10;
+                const paddingBottom = 10;
+                const paddingY = paddingTop + paddingBottom;
+
+                const totalLines = this.h + 3;
+                
+                const scaleX = (window.innerWidth - paddingX) / (this.w * charWidth);
+                const scaleY = (window.innerHeight - paddingY) / (totalLines * baseLineHeight);
+                const scale = Math.max(0.5, Math.min(scaleX, scaleY));
+                
+                const fontSize = Math.floor(baseFontSize * scale);
+                this.elem.style.fontSize = `${fontSize}px`;
             }
             
             render(s, p) {
-                const scale = Math.max(0.3, Math.min(window.innerWidth / (this.w*7+60), window.innerHeight / ((this.h+2)*18+60)));
-                const cw = 7*scale, ch = 18*scale, m = 30*scale;
+                let output = '';
                 
-                this.c.canvas.width = this.w*cw + m*2;
-                this.c.canvas.height = (this.h+2)*ch + m*2;
-                this.c.font = `${12*scale}px 'DejaVu Sans Mono', monospace`;
-                this.c.textBaseline = 'middle';
-                this.c.textAlign = 'center';
+                output += `–– Step ${s.stepCount.toString()} ––\n`;
                 
-                this.c.fillStyle = '#000';
-                this.c.fillRect(0, 0, this.c.canvas.width, this.c.canvas.height);
-                
-                this.c.fillStyle = '#fff';
-                this.c.textAlign = 'left';
-                this.c.font = `${12*scale}px 'DejaVu Sans Mono', monospace`;
-                this.c.fillText(`–– Step ${s.stepCount.toString().padStart(5)} ––`, m, m + ch/2);
-                
-                this.c.textAlign = 'center';
-                this.c.font = `${12*scale}px 'DejaVu Sans Mono', monospace`;
                 for (let y = 0; y < this.h; y++) {
                     for (let x = 0; x < this.w; x++) {
                         const c = p[y][x];
-                        const cx = m + (x + 0.5) * cw;
-                        const cy = m + (y + 1.5) * ch;
-                        
                         if (x === s.x && y === s.y) {
-                            this.c.fillStyle = '#fff';
-                            this.c.fillRect(m + x*cw, m + (y+1)*ch, cw, ch);
-                            this.c.fillStyle = '#000';
-                            if (c !== ' ') this.c.fillText(c, cx, cy);
+                            output += `<span class="ip-highlight">${c === ' ' ? '&nbsp;' : this.escapeHtml(c)}</span>`;
                         } else {
-                            this.c.fillStyle = '#fff';
-                            if (c !== ' ') this.c.fillText(c, cx, cy);
+                            output += c === ' ' ? '&nbsp;' : this.escapeHtml(c);
                         }
                     }
+                    output += '\n';
+                }
+
+                const cmd = p[s.y][s.x];
+                const status = `IP:(${s.x.toString().padStart(2)}, ${s.y.toString().padStart(2)}) Dir:(${s.dx>=0?'+':''}${s.dx},${s.dy>=0?'+':''}${s.dy}) Cmd:'${this.escapeHtml(cmd)}'`;
+                output += status;
+
+                output += '\n';
+                if (s.outputBuffer) {
+                    output += this.escapeHtml(s.outputBuffer);
+                } else {
+                    output += ' ';
                 }
                 
-                this.c.fillStyle = '#fff';
-                this.c.textAlign = 'left';
-                const sy = m + (this.h + 1.5) * ch;
-                const cmd = p[s.y][s.x];
-                const status = `IP:(${s.x.toString().padStart(2)}, ${s.y.toString().padStart(2)}) Dir:(${s.dx>=0?'+':''}${s.dx},${s.dy>=0?'+':''}${s.dy}) Cmd:'${cmd}'`;
-                this.c.fillText(status, m, sy);
-                if (s.outputBuffer) {
-                    this.c.fillText(` Output: ${s.outputBuffer}`, m + this.c.measureText(status).width, sy);
-                }
+                this.elem.innerHTML = output;
+            }
+            
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
             }
         }
 
         const WIDTH = 80;
         const HEIGHT = 25;
         
-        const sourceCode = `v                                                                              
+        const sourceCode = `vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
                                                    ?                ?           
                      ?    ?                                                     
                                        ?              ?                         
@@ -184,8 +205,8 @@
                                                ?   ?                            
                                  ?                                    ?         
                                   ?    ?                                        
-             ?                 ?                                                
-                  ?          ?                                                  
+             ?                 ?                                               
+                  ?          ?               ?                                  
                     ?       ?                                                   
      ?                                                  ?                       
                   ?                                       ?                     
@@ -206,6 +227,7 @@ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"Rain."<vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
         b.load(sourceCode);
         
         function resize() {
+            r.updateFontSize();
             r.render({x:b.x,y:b.y,dx:b.dx,dy:b.dy,stepCount:b.stepCount,outputBuffer:b.out,running:b.run}, b.p);
         }
         
