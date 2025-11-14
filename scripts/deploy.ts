@@ -1,29 +1,33 @@
-import { network } from "hardhat";
+import * as fs from "fs";
+import * as path from "path";
+
+const { ethers } = require("hardhat");
 
 async function main() {
-  const { viem } = await network.connect();
-
   console.log("Deploying contracts...");
 
-  // Deploy RandomRainGenerator
-  const generator = await viem.deployContract("RandomRainGenerator");
-  console.log("RandomRainGenerator deployed to:", generator.address);
+  // Read font base64 file
+  const fontBase64Path = path.join(__dirname, "..", "font", "DejaVuSansMono.base64");
+  const fontBase64 = fs.readFileSync(fontBase64Path, "utf-8").trim();
 
-  // Deploy BefungeInterpreter
-  const interpreter = await viem.deployContract("BefungeInterpreter");
-  console.log("BefungeInterpreter deployed to:", interpreter.address);
-
-  // Deploy BefungeRenderer
-  const renderer = await viem.deployContract("BefungeRenderer", [interpreter.address]);
-  console.log("BefungeRenderer deployed to:", renderer.address);
+  // Deploy RandomRainRenderer
+  const RandomRainRenderer = await ethers.getContractFactory("RandomRainRenderer");
+  const renderer = await RandomRainRenderer.deploy(
+    fontBase64,
+    "", // befungeInterpreterJS
+    "", // befungeRendererJS
+    ""  // randomRainGeneratorJS
+  );
+  await renderer.waitForDeployment();
+  const rendererAddress = await renderer.getAddress();
+  console.log("RandomRainRenderer deployed to:", rendererAddress);
 
   // Deploy RandomRain
-  const randomRain = await viem.deployContract("RandomRain", [
-    generator.address,
-    interpreter.address,
-    renderer.address
-  ]);
-  console.log("RandomRain deployed to:", randomRain.address);
+  const RandomRain = await ethers.getContractFactory("RandomRain");
+  const randomRain = await RandomRain.deploy(rendererAddress);
+  await randomRain.waitForDeployment();
+  const randomRainAddress = await randomRain.getAddress();
+  console.log("RandomRain deployed to:", randomRainAddress);
 
   console.log("All contracts deployed successfully!");
 }

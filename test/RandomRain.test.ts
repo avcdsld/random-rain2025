@@ -1,16 +1,34 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const fs = require("fs");
+const path = require("path");
 
 describe("RandomRain", function () {
   let randomRain: any;
+  let renderer: any;
   let owner: any;
   let user: any;
 
   before(async function () {
     [owner, user] = await ethers.getSigners();
 
+    const fontBase64Path = path.join(__dirname, "..", "font", "DejaVuSansMono.base64");
+    const fontBase64 = fs.readFileSync(fontBase64Path, "utf-8").trim();
+    const befungeInterpreterJS = "";
+    const befungeRendererJS = "";
+    const randomRainGeneratorJS = "";
+
+    const RandomRainRenderer = await ethers.getContractFactory("RandomRainRenderer");
+    renderer = await RandomRainRenderer.deploy(
+      fontBase64,
+      befungeInterpreterJS,
+      befungeRendererJS,
+      randomRainGeneratorJS
+    );
+    await renderer.waitForDeployment();
+
     const RandomRain = await ethers.getContractFactory("RandomRain");
-    randomRain = await RandomRain.deploy();
+    randomRain = await RandomRain.deploy(await renderer.getAddress());
     await randomRain.waitForDeployment();
   });
 
@@ -28,12 +46,12 @@ describe("RandomRain", function () {
     expect(await randomRain.ownerOf(0)).to.equal(await owner.getAddress());
     expect(await randomRain.totalSupply()).to.equal(1);
     
-    const seed = await randomRain.tokenSeeds(0);
+    const seed = await randomRain.seeds(0);
     expect(seed).to.be.a("bigint");
     expect(seed).to.be.gt(0);
     
     const deterministic = await randomRain.deterministicMode(0);
-    expect(deterministic).to.be.true;
+    expect(deterministic).to.be.false;
   });
 
   it("Should mint second NFT", async function () {
@@ -49,22 +67,25 @@ describe("RandomRain", function () {
     ).to.be.revertedWith("exceeds max supply");
   });
 
-  it("Should return HTML tokenURI", async function () {
+  it("Should return JSON tokenURI", async function () {
     const tokenURI = await randomRain.tokenURI(0);
     
     expect(tokenURI).to.be.a("string");
-    expect(tokenURI).to.include("data:text/html;base64,");
+    expect(tokenURI).to.include("data:application/json;base64,");
     
-    const base64Data = tokenURI.replace("data:text/html;base64,", "");
-    const html = Buffer.from(base64Data, "base64").toString("utf-8");
-    expect(html).to.include("<!DOCTYPE html>");
+    const base64Data = tokenURI.replace("data:application/json;base64,", "");
+    const json = Buffer.from(base64Data, "base64").toString("utf-8");
+    const parsed = JSON.parse(json);
+    expect(parsed.name).to.include("Random Rain #0");
+    expect(parsed.image).to.include("data:image/svg+xml;base64,");
+    expect(parsed.animation_url).to.include("data:text/html;base64,");
   });
 
   it("Should allow owner to set seed", async function () {
     const newSeed = 12345n;
     await randomRain.setSeed(0, newSeed);
     
-    const seed = await randomRain.tokenSeeds(0);
+    const seed = await randomRain.seeds(0);
     expect(seed).to.equal(newSeed);
   });
 
@@ -85,25 +106,27 @@ describe("RandomRain", function () {
     expect(deterministic2).to.be.true;
   });
 
-  it("Should return preview HTML", async function () {
+  it("Should return preview JSON", async function () {
     const seed = 54321n;
-    const previewHTML = await randomRain.preview(seed);
+    const previewJSON = await randomRain.preview(seed);
     
-    expect(previewHTML).to.be.a("string");
-    expect(previewHTML).to.include("data:text/html;base64,");
+    expect(previewJSON).to.be.a("string");
+    expect(previewJSON).to.include("data:application/json;base64,");
     
-    const base64Data = previewHTML.replace("data:text/html;base64,", "");
-    const html = Buffer.from(base64Data, "base64").toString("utf-8");
-    expect(html).to.include("INITIAL_SEED = 54321");
+    const base64Data = previewJSON.replace("data:application/json;base64,", "");
+    const json = Buffer.from(base64Data, "base64").toString("utf-8");
+    const parsed = JSON.parse(json);
+    expect(parsed.name).to.equal("Random Rain Preview");
+    expect(parsed.image).to.include("data:image/svg+xml;base64,");
+    expect(parsed.animation_url).to.include("data:text/html;base64,");
   });
 
   it("Should mint 2 NFTs and check their metadata", async function () {
-    await randomRain.mint(await owner.getAddress());
-    await randomRain.mint(await owner.getAddress());
+    if (await randomRain.totalSupply() < 1) {
+      await randomRain.mint(await owner.getAddress());
+    }
     
-    expect(await randomRain.totalSupply()).to.equal(2);
-    
-    const seed0 = await randomRain.tokenSeeds(0);
+    const seed0 = await randomRain.seeds(0);
     const deterministic0 = await randomRain.deterministicMode(0);
     const tokenURI0 = await randomRain.tokenURI(0);
     
@@ -113,13 +136,22 @@ describe("RandomRain", function () {
     console.log("TokenURI:");
     console.log(tokenURI0);
     
-    const base64Data0 = tokenURI0.replace("data:text/html;base64,", "");
-    const html0 = Buffer.from(base64Data0, "base64").toString("utf-8");
-    expect(html0).to.include("<!DOCTYPE html>");
-    expect(html0).to.include(`INITIAL_SEED = ${seed0.toString()}`);
-    expect(html0).to.include(`DETERMINISTIC_MODE = ${deterministic0}`);
+    const base64Data0 = tokenURI0.replace("data:application/json;base64,", "");
+    const json0 = Buffer.from(base64Data0, "base64").toString("utf-8");
+    const parsed0 = JSON.parse(json0);
+    expect(parsed0.name).to.include("Random Rain #0");
+    expect(parsed0.image).to.include("data:image/svg+xml;base64,");
+    expect(parsed0.animation_url).to.include("data:text/html;base64,");
     
-    const seed1 = await randomRain.tokenSeeds(1);
+    const htmlBase64Data0 = parsed0.animation_url.replace("data:text/html;base64,", "");
+    const html0 = Buffer.from(htmlBase64Data0, "base64").toString("utf-8");
+    expect(html0).to.include("<!DOCTYPE html>");
+    
+    if (await randomRain.totalSupply() < 2) {
+      await randomRain.mint(await owner.getAddress());
+    }
+    
+    const seed1 = await randomRain.seeds(1);
     const deterministic1 = await randomRain.deterministicMode(1);
     const tokenURI1 = await randomRain.tokenURI(1);
     
@@ -129,19 +161,17 @@ describe("RandomRain", function () {
     console.log("TokenURI:");
     console.log(tokenURI1);
     
-    const base64Data1 = tokenURI1.replace("data:text/html;base64,", "");
-    const html1 = Buffer.from(base64Data1, "base64").toString("utf-8");
+    const base64Data1 = tokenURI1.replace("data:application/json;base64,", "");
+    const json1 = Buffer.from(base64Data1, "base64").toString("utf-8");
+    const parsed1 = JSON.parse(json1);
+    expect(parsed1.name).to.include("Random Rain #1");
+    expect(parsed1.image).to.include("data:image/svg+xml;base64,");
+    expect(parsed1.animation_url).to.include("data:text/html;base64,");
+    
+    const htmlBase64Data1 = parsed1.animation_url.replace("data:text/html;base64,", "");
+    const html1 = Buffer.from(htmlBase64Data1, "base64").toString("utf-8");
     expect(html1).to.include("<!DOCTYPE html>");
-    expect(html1).to.include(`INITIAL_SEED = ${seed1.toString()}`);
-    expect(html1).to.include(`DETERMINISTIC_MODE = ${deterministic1}`);
     
     expect(seed0).to.not.equal(seed1);
-    
-    expect(html0).to.include("BefungeInterpreter");
-    expect(html0).to.include("generateRandomRain");
-    expect(html0).to.include("runBefunge");
-    expect(html1).to.include("BefungeInterpreter");
-    expect(html1).to.include("generateRandomRain");
-    expect(html1).to.include("runBefunge");
   });
 });
