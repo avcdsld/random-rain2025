@@ -7,16 +7,17 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "./RandomRainRenderer.sol";
 
-contract RandomRain is ERC721, Ownable {
+contract RandomRain2025 is ERC721, Ownable {
     using Strings for uint256;
     uint256 public totalSupply;
     uint256 public constant MAX_SUPPLY = 2;
     mapping(uint256 => uint256) public seeds;
     mapping(uint256 => bool) public deterministicMode;
+    mapping(uint256 => bool) public startWandering;
     RandomRainRenderer public renderer;
 
-    constructor(address _renderer) ERC721("Random Rain 2025", "RAIN") Ownable(msg.sender) {
-        renderer = RandomRainRenderer(_renderer);
+    constructor(address rendererAddress) ERC721("Random Rain 2025", "RAIN") Ownable(msg.sender) {
+        renderer = RandomRainRenderer(rendererAddress);
     }
 
     function mint(address to) public onlyOwner {
@@ -25,6 +26,7 @@ contract RandomRain is ERC721, Ownable {
         uint256 seed = uint256(keccak256(abi.encodePacked("rain", block.timestamp)));
         seeds[totalSupply] = seed;
         deterministicMode[totalSupply] = false;
+        startWandering[totalSupply] = true;
         totalSupply++;
     }
 
@@ -32,17 +34,19 @@ contract RandomRain is ERC721, Ownable {
         require(_ownerOf(tokenId) != address(0), "not exists");
         uint256 seed = seeds[tokenId];
         bool deterministic = deterministicMode[tokenId];
-        string memory svg = renderer.svg(seed);
-        string memory html = renderer.html(seed, deterministic);
+        bool wandering = startWandering[tokenId];
+        string memory svg = renderer.svg(seed, wandering);
+        string memory html = renderer.html(seed, deterministic, wandering);
         string memory json = string.concat(
             '{',
-            '"name":"Random Rain",',
-            '"description":"Random Rain.",',
+            '"name":"Random Rain 2025",',
+            '"description":"Random Rain 2025 is a revised edition of the award-winning code poem Random Rain (2019, Source Code Poetry Spirit Award), which reinterprets Japanese avant-garde poet Seiichi Niikuni\'s seminal concrete poem Rain (1966) in the stack-based, two-dimensional programming language Befunge-93, endowing it with machine readability and executable value. Minted in an edition of 2.",',
             '"image":"', svg, '",',
             '"animation_url":"', html, '",',
             '"attributes":[',
             '{"trait_type":"Seed","value":"', seed.toString(), '"},',
             '{"trait_type":"Deterministic","value":"', deterministic ? "true" : "false", '"},',
+            '{"trait_type":"StartWandering","value":"', wandering ? "true" : "false", '"},',
             '{"trait_type":"Edition","value":"', tokenId.toString(), '"},',
             '{"trait_type":"Artist","value":"Akihiro Kubota"},',
             '{"trait_type":"Translator","value":"Zeroichi Arakawa"}',
@@ -58,12 +62,16 @@ contract RandomRain is ERC721, Ownable {
     }
 
     function preview(uint256 seed) external view returns (string memory) {
-        string memory svg = renderer.svg(seed);
-        string memory html = renderer.html(seed, true);
+        return preview(seed, true);
+    }
+
+    function preview(uint256 seed, bool wandering) public view returns (string memory) {
+        string memory svg = renderer.svg(seed, wandering);
+        string memory html = renderer.html(seed, true, wandering);
         string memory json = string.concat(
             '{',
-            '"name":"Random Rain Preview",',
-            '"description":"Random Rain Preview.",',
+            '"name":"Random Rain 2025 Preview",',
+            '"description":"Random Rain 2025 Preview.",',
             '"image":"', svg, '",',
             '"animation_url":"', html, '"',
             '}'
@@ -71,12 +79,17 @@ contract RandomRain is ERC721, Ownable {
         return string.concat("data:application/json;base64,", Base64.encode(bytes(json)));
     }
 
-    function setDeterministicMode(uint256 tokenId, bool _deterministic) external {
+    function setDeterministicMode(uint256 tokenId, bool deterministic) external {
         require(_ownerOf(tokenId) == msg.sender, "not owner");
-        deterministicMode[tokenId] = _deterministic;
+        deterministicMode[tokenId] = deterministic;
     }
 
-    function setRenderer(address _renderer) external onlyOwner {
-        renderer = RandomRainRenderer(_renderer);
+    function setStartWandering(uint256 tokenId, bool wandering) external {
+        require(_ownerOf(tokenId) == msg.sender, "not owner");
+        startWandering[tokenId] = wandering;
+    }
+
+    function setRenderer(address rendererAddress) external onlyOwner {
+        renderer = RandomRainRenderer(rendererAddress);
     }
 }

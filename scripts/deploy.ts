@@ -22,12 +22,12 @@ async function main() {
   const rendererAddress = await renderer.getAddress();
   console.log("RandomRainRenderer deployed to:", rendererAddress);
 
-  // Deploy RandomRain
-  const RandomRain = await ethers.getContractFactory("RandomRain");
-  const randomRain = await RandomRain.deploy(rendererAddress);
+  // Deploy RandomRain2025
+  const RandomRain2025 = await ethers.getContractFactory("RandomRain2025");
+  const randomRain = await RandomRain2025.deploy(rendererAddress);
   await randomRain.waitForDeployment();
   const randomRainAddress = await randomRain.getAddress();
-  console.log("RandomRain deployed to:", randomRainAddress);
+  console.log("RandomRain2025 deployed to:", randomRainAddress);
 
   console.log("All contracts deployed successfully!");
 }

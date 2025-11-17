@@ -65,8 +65,8 @@ contract RandomRainRenderer is Ownable {
         randomRainGeneratorJS = _randomRainGeneratorJS;
     }
 
-    function svg(uint256 seed) external view returns (string memory) {
-        string memory sourceCode = _generateSourceCode(seed, 0);
+    function svg(uint256 seed, bool startWandering) external view returns (string memory) {
+        string memory sourceCode = _generateSourceCode(seed, startWandering);
         string memory svgContent = _generateSVGContent(sourceCode);
         return string.concat("data:image/svg+xml;base64,", Base64.encode(bytes(svgContent)));
     }
@@ -254,9 +254,10 @@ contract RandomRainRenderer is Ownable {
         return idx;
     }
 
-    function html(uint256 seed, bool deterministicMode) external view returns (string memory) {
+    function html(uint256 seed, bool deterministicMode, bool startWandering) external view returns (string memory) {
         string memory seedStr = seed.toString();
         string memory deterministicStr = deterministicMode ? "true" : "false";
+        string memory startWanderingStr = startWandering ? "true" : "false";
         string memory interpreterJS = bytes(befungeInterpreterJS).length > 0 ? befungeInterpreterJS : _getBefungeInterpreterJS();
         string memory generatorJS = bytes(randomRainGeneratorJS).length > 0 ? randomRainGeneratorJS : _getRandomRainGeneratorJS();
         string memory rendererJS = bytes(befungeRendererJS).length > 0 ? befungeRendererJS : _getBefungeRendererJS();
@@ -275,7 +276,7 @@ contract RandomRainRenderer is Ownable {
             interpreterJS,
             generatorJS,
             rendererJS,
-            _getMainJS(seedStr, deterministicStr),
+            _getMainJS(seedStr, deterministicStr, startWanderingStr),
             '</script></body></html>'
         );
         return string.concat("data:text/html;base64,", Base64.encode(bytes(htmlContent)));
@@ -334,11 +335,15 @@ contract RandomRainRenderer is Ownable {
     }
 
     function _generateSourceCode(uint256 seed, uint256 runCount) internal pure returns (string memory) {
-        bool isWandering = (runCount % 2 == 0);
-        if (isWandering) {
-            return _generateWandering(seed + runCount);
+        bool startWandering = (runCount % 2 == 0);
+        return _generateSourceCode(seed + runCount, startWandering);
+    }
+
+    function _generateSourceCode(uint256 seed, bool startWandering) internal pure returns (string memory) {
+        if (startWandering) {
+            return _generateWandering(seed);
         } else {
-            return _generateStraight(seed + runCount);
+            return _generateStraight(seed);
         }
     }
 
@@ -621,16 +626,17 @@ contract RandomRainRenderer is Ownable {
         );
     }
 
-    function _getMainJS(string memory seedStr, string memory deterministicStr) internal pure returns (string memory) {
+    function _getMainJS(string memory seedStr, string memory deterministicStr, string memory startWanderingStr) internal pure returns (string memory) {
         return string.concat(
             'const W=80;const H=25;const MS=20000;const SD=50;const RD=30000;const RO=10000n;\n',
-            'const IS=BigInt("', seedStr, '");const DM=', deterministicStr, ';\n',
+            'const IS=BigInt("', seedStr, '");const DM=', deterministicStr, ';const IW=', startWanderingStr, ';\n',
             'let cs=IS;let rc=0;let i,r;\n',
             'function runBefunge(){\n',
             '  const rs=DM?IS+BigInt(rc)*RO:null;\n',
             '  i=new BefungeInterpreter(W,H,rs?new SeededRandom(rs):null);\n',
             '  r=new BefungeRenderer(\'canvas\',W,H);\n',
-            '  i.load(generateRandomRain(cs,rc));\n',
+            '  const initialLayout=(rc===0)?IW:(rc%2===0);\n',
+            '  i.load(initialLayout?generateWandering(cs):generateStraight(cs));\n',
             '  async function exec(){\n',
             '    while(i.step()){\n',
             '      r.render({x:i.x,y:i.y,dx:i.dx,dy:i.dy,stepCount:i.stepCount,outputBuffer:i.out,running:i.run},i.p);\n',
