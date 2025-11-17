@@ -76,7 +76,7 @@ describe("RandomRain", function () {
     const base64Data = tokenURI.replace("data:application/json;base64,", "");
     const json = Buffer.from(base64Data, "base64").toString("utf-8");
     const parsed = JSON.parse(json);
-    expect(parsed.name).to.include("Random Rain #0");
+    expect(parsed.name).to.equal("Random Rain");
     expect(parsed.image).to.include("data:image/svg+xml;base64,");
     expect(parsed.animation_url).to.include("data:text/html;base64,");
   });
@@ -139,7 +139,7 @@ describe("RandomRain", function () {
     const base64Data0 = tokenURI0.replace("data:application/json;base64,", "");
     const json0 = Buffer.from(base64Data0, "base64").toString("utf-8");
     const parsed0 = JSON.parse(json0);
-    expect(parsed0.name).to.include("Random Rain #0");
+    expect(parsed0.name).to.equal("Random Rain");
     expect(parsed0.image).to.include("data:image/svg+xml;base64,");
     expect(parsed0.animation_url).to.include("data:text/html;base64,");
     
@@ -164,7 +164,7 @@ describe("RandomRain", function () {
     const base64Data1 = tokenURI1.replace("data:application/json;base64,", "");
     const json1 = Buffer.from(base64Data1, "base64").toString("utf-8");
     const parsed1 = JSON.parse(json1);
-    expect(parsed1.name).to.include("Random Rain #1");
+    expect(parsed1.name).to.equal("Random Rain");
     expect(parsed1.image).to.include("data:image/svg+xml;base64,");
     expect(parsed1.animation_url).to.include("data:text/html;base64,");
     
