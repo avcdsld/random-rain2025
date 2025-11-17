@@ -36,13 +36,16 @@ contract RandomRain is ERC721, Ownable {
         string memory html = renderer.html(seed, deterministic);
         string memory json = string.concat(
             '{',
-            '"name":"Random Rain #', tokenId.toString(), '",',
+            '"name":"Random Rain",',
             '"description":"Random Rain.",',
             '"image":"', svg, '",',
             '"animation_url":"', html, '",',
             '"attributes":[',
             '{"trait_type":"Seed","value":"', seed.toString(), '"},',
-            '{"trait_type":"Deterministic","value":"', deterministic ? "true" : "false", '"}',
+            '{"trait_type":"Deterministic","value":"', deterministic ? "true" : "false", '"},',
+            '{"trait_type":"Edition","value":"', tokenId.toString(), '"},',
+            '{"trait_type":"Artist","value":"Akihiro Kubota"},',
+            '{"trait_type":"Translator","value":"Zeroichi Arakawa"}',
             ']',
             '}'
         );

@@ -222,16 +222,7 @@ contract RandomRainRenderer is Ownable {
                         resultIndex = _appendTextTag(result, resultIndex, metrics.textStartX, y);
                     }
 
-                    bool isIP = (lineIndex == 0 && charIndex == 0);
-                    if (isIP) {
-                        resultIndex = _appendString(result, resultIndex, "<span style=\"background:#fff;color:#000;\">");
-                    }
-
                     resultIndex = _appendEntity(result, resultIndex, char);
-
-                    if (isIP) {
-                        resultIndex = _appendCloseTag(result, resultIndex, "span");
-                    }
 
                     charIndex++;
                     if (charIndex >= WIDTH) {
@@ -353,11 +344,15 @@ contract RandomRainRenderer is Ownable {
 
     function _generateWandering(uint256 seed) internal pure returns (string memory) {
         bytes memory b = new bytes(2024);
-        uint256 p;
+        uint256 p = 0;
         uint256 rngSeed = _hashSeed(seed);
 
-        for (; p < WIDTH;) b[p++] = "v";
-        b[p++] = "\n";
+        for (uint256 i = 0; i < WIDTH; i++) {
+            b[p] = "v";
+            p++;
+        }
+        b[p] = "\n";
+        p++;
 
         for (uint256 L = 1; L < 22; L++) {
             uint256 numQ;
@@ -429,11 +424,15 @@ contract RandomRainRenderer is Ownable {
 
     function _generateStraight(uint256 seed) internal pure returns (string memory) {
         bytes memory b = new bytes(2024);
-        uint256 p;
+        uint256 p = 0;
         uint256 rngSeed = _hashSeed(seed);
 
-        for (; p < WIDTH;) b[p++] = "v";
-        b[p++] = "\n";
+        for (uint256 i = 0; i < WIDTH; i++) {
+            b[p] = "v";
+            p++;
+        }
+        b[p] = "\n";
+        p++;
 
         for (uint256 L = 1; L < 22; L++) {
             uint256[] memory qPositions;
