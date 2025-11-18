@@ -262,17 +262,19 @@ contract RandomRainRenderer is Ownable {
         string memory generatorJS = bytes(randomRainGeneratorJS).length > 0 ? randomRainGeneratorJS : _getRandomRainGeneratorJS();
         string memory rendererJS = bytes(befungeRendererJS).length > 0 ? befungeRendererJS : _getBefungeRendererJS();
         string memory htmlContent = string.concat(
-            '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Befunge</title><style>',
+            '<!DOCTYPE html><html lang="en">\n',
+            '<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">\n',
+            '<title>Random Rain 2025</title>\n',
+            '<style>\n',
             '@font-face { font-family: "DejaVu Sans Mono"; src: url("data:font/woff2;base64,',
             fontBase64,
-            '") format("woff2"); font-weight: normal; font-style: normal; }',
-            '@font-face { font-family: "DejaVu Sans Mono"; src: url("data:font/woff2;base64,',
-            fontBase64,
-            '") format("woff2"); font-weight: bold; font-style: normal; }',
-            'body { margin: 0; padding: 0; background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }',
-            'pre { display: block; font-family: "DejaVu Sans Mono", monospace; font-weight: normal; font-size: 12px; color: #fff; background: #000; margin: 0; padding: 3px 12px 8px 12px; white-space: pre; overflow: auto; max-width: 100vw; max-height: 100vh; line-height: 1.2; box-sizing: border-box; }',
-            '.ip-highlight { background: #fff; color: #000; }',
-            '</style></head><body><pre id="canvas"></pre><script>',
+            '") format("woff2"); font-weight: normal; font-style: normal; }\n',
+            'body { margin: 0; padding: 0; background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }\n',
+            'pre { display: block; font-family: "DejaVu Sans Mono", monospace; font-weight: normal; font-size: 12px; color: #fff; background: #000; margin: 0; padding: 3px 12px 8px 12px; white-space: pre; overflow: auto; max-width: 100vw; max-height: 100vh; line-height: 1.2; box-sizing: border-box; }\n',
+            '.ip-highlight { background: #fff; color: #000; }\n',
+            '</style></head>\n',
+            '<body><pre id="canvas"></pre>\n'
+            '<script>\n',
             interpreterJS,
             generatorJS,
             rendererJS,
@@ -535,7 +537,7 @@ contract RandomRainRenderer is Ownable {
             '    this.x=(this.x+this.dx)%this.w;this.y=(this.y+this.dy)%this.h;\n',
             '    if(this.x<0)this.x+=this.w;if(this.y<0)this.y+=this.h\n',
             '  }\n',
-            '}'
+            '}\n'
         );
     }
 
@@ -590,7 +592,7 @@ contract RandomRainRenderer is Ownable {
             'function generateRandomRain(seed,rc){\n',
             '  const sv=(typeof seed==="bigint"?seed:BigInt(seed))+BigInt(rc);\n',
             '  return rc%2===0?generateWandering(sv):generateStraight(sv)\n',
-            '}'
+            '}\n'
         );
     }
 
@@ -622,7 +624,7 @@ contract RandomRainRenderer is Ownable {
             '    this.elem.innerHTML=o\n',
             '  }\n',
             '  escapeHtml(t){const d=document.createElement(\'div\');d.textContent=t;return d.innerHTML}\n',
-            '}'
+            '}\n'
         );
     }
 
@@ -632,6 +634,7 @@ contract RandomRainRenderer is Ownable {
             'const IS=BigInt("', seedStr, '");const DM=', deterministicStr, ';const IW=', startWanderingStr, ';\n',
             'let cs=IS;let rc=0;let i,r;\n',
             'function runBefunge(){\n',
+            '  cs=DM?IS+BigInt(rc)*RO:cs;\n',
             '  const rs=DM?IS+BigInt(rc)*RO:null;\n',
             '  i=new BefungeInterpreter(W,H,rs?new SeededRandom(rs):null);\n',
             '  r=new BefungeRenderer(\'canvas\',W,H);\n',
@@ -644,7 +647,7 @@ contract RandomRainRenderer is Ownable {
             '      if(i.stepCount>=MS){i.run=false;break}\n',
             '    }\n',
             '    if(i.stepCount>=MS||!i.run){\n',
-            '      rc++;cs=DM?IS+BigInt(rc):BigInt(Math.floor(Date.now()/1000));\n',
+            '      rc++;cs=DM?IS+BigInt(rc)*RO:BigInt(Math.floor(Date.now()/1000));\n',
             '      setTimeout(runBefunge,RD)\n',
             '    }\n',
             '  }\n',
@@ -653,7 +656,7 @@ contract RandomRainRenderer is Ownable {
             '  });\n',
             '  exec()\n',
             '}\n',
-            'runBefunge();'
+            'runBefunge();\n'
         );
     }
 }
