@@ -116,7 +116,7 @@ describe("RandomRain2025", function () {
     const base64Data = previewJSON.replace("data:application/json;base64,", "");
     const json = Buffer.from(base64Data, "base64").toString("utf-8");
     const parsed = JSON.parse(json);
-    expect(parsed.name).to.equal("Random Rain Preview");
+    expect(parsed.name).to.equal("Random Rain 2025 Preview");
     expect(parsed.image).to.include("data:image/svg+xml;base64,");
     expect(parsed.animation_url).to.include("data:text/html;base64,");
   });
