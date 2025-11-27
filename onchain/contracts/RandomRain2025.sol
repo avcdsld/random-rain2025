@@ -36,7 +36,7 @@ contract RandomRain2025 is ERC721, Ownable {
         string memory json = string.concat(
             '{',
             '"name":"Random Rain 2025 NFT",',
-            '"description":"Random Rain 2025 is a revised edition of the award-winning code poem Random Rain (2019, Source Code Poetry Spirit Award), which reinterprets Japanese avant-garde poet Seiichi Niikuni\'s seminal concrete poem Rain (1966) in the stack-based, two-dimensional programming language Befunge-93, endowing it with machine readability and executable value.",',
+            '"description":"Random Rain 2025 NFT is a newly revised, NFT-based edition of the award-winning code poem Random Rain (2019, Source Code Poetry Spirit Award). This work reimagines Seiichi Niikuni', unicode'’', 's seminal concrete poem Rain (1966) through the stack-based, two-dimensional programming language Befunge-93, granting the poem machine readability and executable form while extending its avant-garde spirit into the computational domain.",',
             '"image":"', svg, '",',
             '"animation_url":"', html, '",',
             '"attributes":[',
