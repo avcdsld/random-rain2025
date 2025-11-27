@@ -10,7 +10,6 @@ import "./RandomRainRenderer.sol";
 contract RandomRain2025 is ERC721, Ownable {
     using Strings for uint256;
     uint256 public totalSupply;
-    uint256 public constant MAX_SUPPLY = 2;
     mapping(uint256 => uint256) public seeds;
     mapping(uint256 => bool) public deterministicMode;
     mapping(uint256 => bool) public startWandering;
@@ -21,13 +20,10 @@ contract RandomRain2025 is ERC721, Ownable {
     }
 
     function mint(address to) public onlyOwner {
-        require(totalSupply < MAX_SUPPLY, "exceeds max supply");
-        _safeMint(to, totalSupply);
-        uint256 seed = uint256(keccak256(abi.encodePacked("rain", block.timestamp)));
-        seeds[totalSupply] = seed;
+        seeds[totalSupply] = uint256(keccak256(abi.encodePacked("rain", block.timestamp)));
         deterministicMode[totalSupply] = false;
         startWandering[totalSupply] = true;
-        totalSupply++;
+        _safeMint(to, totalSupply++);
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
@@ -39,8 +35,8 @@ contract RandomRain2025 is ERC721, Ownable {
         string memory html = renderer.html(seed, deterministic, wandering);
         string memory json = string.concat(
             '{',
-            '"name":"Random Rain 2025",',
-            '"description":"Random Rain 2025 is a revised edition of the award-winning code poem Random Rain (2019, Source Code Poetry Spirit Award), which reinterprets Japanese avant-garde poet Seiichi Niikuni\'s seminal concrete poem Rain (1966) in the stack-based, two-dimensional programming language Befunge-93, endowing it with machine readability and executable value. Minted in an edition of 2.",',
+            '"name":"Random Rain 2025 NFT",',
+            '"description":"Random Rain 2025 is a revised edition of the award-winning code poem Random Rain (2019, Source Code Poetry Spirit Award), which reinterprets Japanese avant-garde poet Seiichi Niikuni\'s seminal concrete poem Rain (1966) in the stack-based, two-dimensional programming language Befunge-93, endowing it with machine readability and executable value.",',
             '"image":"', svg, '",',
             '"animation_url":"', html, '",',
             '"attributes":[',
@@ -48,8 +44,7 @@ contract RandomRain2025 is ERC721, Ownable {
             '{"trait_type":"Deterministic","value":"', deterministic ? "true" : "false", '"},',
             '{"trait_type":"StartWandering","value":"', wandering ? "true" : "false", '"},',
             '{"trait_type":"Edition","value":"', tokenId.toString(), '"},',
-            '{"trait_type":"Artist","value":"Akihiro Kubota"},',
-            '{"trait_type":"Translator","value":"Zeroichi Arakawa"}',
+            '{"trait_type":"Artist","value":"Akihiro Kubota + Zeroichi Arakawa"}',
             ']',
             '}'
         );
@@ -57,7 +52,7 @@ contract RandomRain2025 is ERC721, Ownable {
     }
 
     function setSeed(uint256 tokenId, uint256 seed) external {
-        require(_ownerOf(tokenId) == msg.sender, "not owner");
+        // require(_ownerOf(tokenId) == msg.sender, "not owner");
         seeds[tokenId] = seed;
     }
 
@@ -80,12 +75,12 @@ contract RandomRain2025 is ERC721, Ownable {
     }
 
     function setDeterministicMode(uint256 tokenId, bool deterministic) external {
-        require(_ownerOf(tokenId) == msg.sender, "not owner");
+        // require(_ownerOf(tokenId) == msg.sender, "not owner");
         deterministicMode[tokenId] = deterministic;
     }
 
     function setStartWandering(uint256 tokenId, bool wandering) external {
-        require(_ownerOf(tokenId) == msg.sender, "not owner");
+        // require(_ownerOf(tokenId) == msg.sender, "not owner");
         startWandering[tokenId] = wandering;
     }
 
