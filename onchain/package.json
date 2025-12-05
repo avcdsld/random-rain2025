@@ -11,6 +11,8 @@
     "test": "hardhat test",
     "deploy": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:hardhat": "hardhat run scripts/deploy.ts --network hardhat",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "verify:sepolia": "hardhat run scripts/verify.ts --network sepolia",
     "node": "hardhat node"
   },
   "repository": {
