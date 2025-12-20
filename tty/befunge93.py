@@ -60,7 +60,7 @@ HEADER_ROW = 1
 GRID_ROW0 = 2
 STATUS_ROW = GRID_ROW0 + HEIGHT
 SEP_ROW = STATUS_ROW + 1
-LOG_ROW0 = SEP_ROW + 1
+LOG_ROW0 = STATUS_ROW + 1
 
 LOG = deque(maxlen=2000)
 
@@ -82,8 +82,12 @@ def log_capacity():
     cap = rows - (LOG_ROW0 - 1)
     return max(1, cap)
 
-def push_log(s: str):
-    LOG.append(str(s))
+def push_log(s: str, update_last: bool = False):
+    s_str = str(s)
+    if update_last and LOG and LOG[-1].startswith("Output(str): "):
+        LOG[-1] = s_str
+    else:
+        LOG.append(s_str)
     redraw_log_area()
 
 def redraw_log_area():
@@ -127,8 +131,10 @@ def draw_status():
     clear_eol()
     cmd_repr = repr(program[y][x])
     s = f"IP:({x:2},{y:2}) Dir:({dx:+2},{dy:+2}) Cmd:{cmd_repr:^2}"
+    if output_buffer:
+        s += f" Output: {output_buffer[-40:]}"
     if string_mode:
-        s += "  (string mode)"
+        s += " (string mode)"
     sys.stdout.write(s[:WIDTH].ljust(WIDTH))
 
 def draw_separator():
@@ -164,7 +170,7 @@ try:
     draw_header()
     draw_grid_full(initial_ip=True)
     draw_status()
-    draw_separator()
+    # draw_separator()
     redraw_log_area()
     sys.stdout.flush()
 
@@ -240,7 +246,6 @@ try:
                 push_log(f"Output(int): {pop()}")
             elif cmd == ',':
                 output_buffer += chr(pop())
-                push_log("Output(str): " + output_buffer[-80:])
             elif cmd == '#':
                 x = (x + dx) % WIDTH
                 y = (y + dy) % HEIGHT
@@ -268,7 +273,7 @@ try:
                 stack.append(ord(s[0]) if s else 0)
                 push_log(f"Input(char) = {stack[-1]}")
             elif cmd == '@':
-                push_log("Final Output: " + output_buffer)
+                # push_log("Final Output: " + output_buffer)
                 break
 
         prev_x, prev_y = x, y
