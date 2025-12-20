@@ -9,16 +9,12 @@ from collections import deque
 WIDTH = 80
 HEIGHT = 25
 
-# -------------------------
-# Load program (from stdin)
-# -------------------------
 program = [[' ' for _ in range(WIDTH)] for _ in range(HEIGHT)]
 lines = sys.stdin.read().splitlines()
 for yy, line in enumerate(lines[:HEIGHT]):
     for xx, ch in enumerate(line[:WIDTH]):
         program[yy][xx] = ch
 
-# Befunge state
 x, y = 0, 0
 dx, dy = 1, 0
 stack = []
@@ -29,15 +25,11 @@ step = 0
 def pop():
     return stack.pop() if stack else 0
 
-# For interactive input even when stdin is redirected
 try:
     TTY = open("/dev/tty", "r", buffering=1)
 except Exception:
-    TTY = None  # may be unavailable in some environments
+    TTY = None
 
-# -------------------------
-# Terminal control helpers
-# -------------------------
 STOP = False
 
 def on_sigint(_sig, _frame):
@@ -47,149 +39,147 @@ def on_sigint(_sig, _frame):
 signal.signal(signal.SIGINT, on_sigint)
 
 def term_enter():
-    # alternate screen + clear + home + hide cursor
     sys.stdout.write("\033[?1049h\033[2J\033[H\033[?25l")
     sys.stdout.flush()
 
 def term_exit():
-    # show cursor + leave alternate screen
     sys.stdout.write("\033[?25h\033[?1049l")
     sys.stdout.flush()
 
 def term_size():
-    # Returns (cols, rows)
     sz = shutil.get_terminal_size(fallback=(80, 24))
     return sz.columns, sz.lines
 
-# -------------------------
-# UI rendering (no scrolling)
-# -------------------------
-LOG = deque(maxlen=9999)  # we will slice per-frame based on terminal height
+def move(row_1based: int, col_1based: int):
+    sys.stdout.write(f"\033[{row_1based};{col_1based}H")
+
+def clear_eol():
+    sys.stdout.write("\033[K")
+
+HEADER_ROW = 1
+GRID_ROW0 = 2
+STATUS_ROW = GRID_ROW0 + HEIGHT
+SEP_ROW = STATUS_ROW + 1
+LOG_ROW0 = SEP_ROW + 1
+
+LOG = deque(maxlen=2000)
+
+def ensure_terminal_large_enough():
+    cols, rows = term_size()
+    min_rows = 1 + HEIGHT + 1 + 1 + 1
+    if cols < WIDTH or rows < min_rows:
+        term_exit()
+        msg = (
+            f"Terminal too small. Need at least {WIDTH}x{min_rows}. "
+            f"Current: {cols}x{rows}\n"
+            f"Try: xterm -fullscreen -fa 'DejaVu Sans Mono' -fs 18 -geometry 80x45\n"
+        )
+        sys.stderr.write(msg)
+        sys.exit(1)
+
+def log_capacity():
+    _, rows = term_size()
+    cap = rows - (LOG_ROW0 - 1)
+    return max(1, cap)
 
 def push_log(s: str):
-    # keep log lines reasonably short for WIDTH
-    if s is None:
-        s = ""
     LOG.append(str(s))
+    redraw_log_area()
 
-def render():
-    cols, rows = term_size()
-
-    # We must never output more than `rows` lines, or xterm may scroll/jitter.
-    # Compose fixed parts first:
-    # 1: header
-    # HEIGHT: grid
-    # 1: status
-    # 1: separator
-    base_lines = 1 + HEIGHT + 1 + 1
-
-    # Ensure we fit within screen height.
-    # If terminal is too small, reduce what we show.
-    # Prefer keeping the grid; if even that doesn't fit, crop grid.
-    usable_rows = max(1, rows)  # safety
-
-    # Determine how many grid rows can fit
-    if usable_rows < 3:
-        grid_rows = max(0, usable_rows - 2)  # almost nothing fits
-    else:
-        # try to keep full HEIGHT, but may need to crop
-        grid_rows = min(HEIGHT, max(0, usable_rows - (1 + 1 + 1)))  # header+status+sep
-
-    # With possibly cropped grid, recompute base
-    base_lines = 1 + grid_rows + 1 + 1
-    log_lines = max(0, usable_rows - base_lines)
-
-    # Width handling: keep logical WIDTH chars, but if terminal narrower, hard-trim.
-    w = min(WIDTH, max(1, cols))
-
-    lines_out = []
-
-    # Header (no trailing newline at the very end; we join later)
-    lines_out.append(f"--- Step {step} ---"[:w].ljust(w))
-
-    # Grid (possibly cropped vertically)
-    for yy in range(grid_rows):
-        row = []
-        for xx in range(WIDTH):
-            ch = program[yy][xx]
-            if xx == x and yy == y:
-                row.append(f"\033[7m{ch}\033[0m")
-            else:
-                row.append(ch)
-        # This row may contain ANSI sequences; trimming naively can cut sequences.
-        # For safety, we keep logical WIDTH content and then trim raw string only if needed
-        # when terminal is narrower than WIDTH. Most of the time cols >= 80 in fullscreen.
-        s = "".join(row)
-        if w < WIDTH:
-            # fallback: drop highlighting when narrow to avoid broken ANSI truncation
-            plain = "".join(program[yy][:WIDTH])
-            s = plain[:w].ljust(w)
-        lines_out.append(s)
-
-    # Status
-    cmd_repr = repr(program[y][x]) if 0 <= y < HEIGHT and 0 <= x < WIDTH else repr(' ')
-    status = f"IP:({x:2},{y:2}) Dir:({dx:+2},{dy:+2}) Cmd:{cmd_repr:^2}"
-    if string_mode:
-        status += "  (string mode)"
-    lines_out.append(status[:w].ljust(w))
-
-    # Separator
-    lines_out.append(("-" * WIDTH)[:w].ljust(w))
-
-    # Log area (show last `log_lines` lines)
-    if log_lines > 0:
-        recent = list(LOG)[-log_lines:]
-        # pad if fewer
-        while len(recent) < log_lines:
-            recent.insert(0, "")
-        for s in recent:
-            lines_out.append(str(s)[:w].ljust(w))
-
-    # Now draw in-place: HOME + join WITHOUT trailing newline + clear-to-end
-    sys.stdout.write("\033[H" + "\n".join(lines_out) + "\033[J")
+def redraw_log_area():
+    cap = log_capacity()
+    recent = list(LOG)[-cap:]
+    for i in range(cap):
+        move(LOG_ROW0 + i, 1)
+        clear_eol()
+        if i < len(recent):
+            line = recent[i]
+            sys.stdout.write(line[:WIDTH].ljust(WIDTH))
     sys.stdout.flush()
 
-def prompt_on_bottom(prompt: str) -> str:
-    """Read from /dev/tty to avoid interfering with stdin-redirected program input."""
-    cols, rows = term_size()
-    w = min(WIDTH, max(1, cols))
-    r = max(1, rows)
+def draw_header():
+    move(HEADER_ROW, 1)
+    clear_eol()
+    sys.stdout.write(f"--- Step {step} ---".ljust(WIDTH))
 
-    # show cursor, move to bottom-left, clear line, print prompt
+def cell_char(xx: int, yy: int) -> str:
+    return program[yy][xx]
+
+def draw_cell(xx: int, yy: int, inverse: bool):
+    row = GRID_ROW0 + yy
+    col = 1 + xx
+    move(row, col)
+    ch = cell_char(xx, yy)
+    if inverse:
+        sys.stdout.write(f"\033[7m{ch}\033[0m")
+    else:
+        sys.stdout.write(ch)
+
+def draw_grid_full(initial_ip=True):
+    for yy in range(HEIGHT):
+        move(GRID_ROW0 + yy, 1)
+        sys.stdout.write("".join(program[yy]))
+    if initial_ip:
+        draw_cell(x, y, True)
+
+def draw_status():
+    move(STATUS_ROW, 1)
+    clear_eol()
+    cmd_repr = repr(program[y][x])
+    s = f"IP:({x:2},{y:2}) Dir:({dx:+2},{dy:+2}) Cmd:{cmd_repr:^2}"
+    if string_mode:
+        s += "  (string mode)"
+    sys.stdout.write(s[:WIDTH].ljust(WIDTH))
+
+def draw_separator():
+    move(SEP_ROW, 1)
+    clear_eol()
+    sys.stdout.write(("-" * WIDTH))
+
+def prompt_on_bottom(prompt: str) -> str:
+    cols, rows = term_size()
+    row = rows
+    move(row, 1)
+    clear_eol()
     sys.stdout.write("\033[?25h")
-    sys.stdout.write(f"\033[{r};1H\033[K")
-    sys.stdout.write(prompt[:w])
+    sys.stdout.write(prompt[:cols])
     sys.stdout.flush()
 
     if TTY is None:
-        # can't read; return empty
         s = ""
     else:
         s = TTY.readline()
-        if s is None:
-            s = ""
-        s = s.rstrip("\n")
+        s = "" if s is None else s.rstrip("\n")
 
-    # hide cursor again, clear prompt line
-    sys.stdout.write(f"\033[{r};1H\033[K\033[?25l")
+    move(row, 1)
+    clear_eol()
+    sys.stdout.write("\033[?25l")
     sys.stdout.flush()
     return s
 
-# -------------------------
-# Main loop
-# -------------------------
 term_enter()
 try:
+    ensure_terminal_large_enough()
+
+    draw_header()
+    draw_grid_full(initial_ip=True)
+    draw_status()
+    draw_separator()
+    redraw_log_area()
+    sys.stdout.flush()
+
+    prev_x, prev_y = x, y
+
     while True:
         if STOP:
             push_log("Interrupted (Ctrl+C).")
-            render()
             break
 
-        render()
-        time.sleep(0.05)
+        time.sleep(0.03)
 
         cmd = program[y][x]
+
+        wrote_cell = None
 
         if string_mode:
             if cmd == '"':
@@ -250,9 +240,7 @@ try:
                 push_log(f"Output(int): {pop()}")
             elif cmd == ',':
                 output_buffer += chr(pop())
-                # optionally mirror into log for visibility
-                if len(output_buffer) <= 200:
-                    push_log("Output(str): " + output_buffer)
+                push_log("Output(str): " + output_buffer[-80:])
             elif cmd == '#':
                 x = (x + dx) % WIDTH
                 y = (y + dy) % HEIGHT
@@ -264,25 +252,49 @@ try:
                 a = pop()
                 b = pop()
                 v = pop()
-                program[b % HEIGHT][a % WIDTH] = chr(v % 256)
+                xx = a % WIDTH
+                yy = b % HEIGHT
+                program[yy][xx] = chr(v % 256)
+                wrote_cell = (xx, yy)
             elif cmd == '&':
                 s = prompt_on_bottom("Input(int): ")
                 try:
                     stack.append(int(s.strip()))
                 except Exception:
                     stack.append(0)
+                push_log(f"Input(int) = {stack[-1]}")
             elif cmd == '~':
                 s = prompt_on_bottom("Input(char): ")
                 stack.append(ord(s[0]) if s else 0)
+                push_log(f"Input(char) = {stack[-1]}")
             elif cmd == '@':
                 push_log("Final Output: " + output_buffer)
-                render()
-                time.sleep(0.8)
                 break
 
+        prev_x, prev_y = x, y
         x = (x + dx) % WIDTH
         y = (y + dy) % HEIGHT
         step += 1
+
+        draw_header()
+
+        if wrote_cell is not None:
+            wx, wy = wrote_cell
+            draw_cell(wx, wy, False)
+
+        if not (prev_x == x and prev_y == y):
+            draw_cell(prev_x, prev_y, False)
+
+        draw_cell(x, y, True)
+
+        draw_status()
+
+        if wrote_cell is not None:
+            wx, wy = wrote_cell
+            if wx == x and wy == y:
+                draw_cell(x, y, True)
+
+        sys.stdout.flush()
 
 finally:
     try:
