@@ -181,6 +181,10 @@ try:
             push_log("Interrupted (Ctrl+C).")
             break
 
+        if step >= 20000:
+            push_log("Maximum step limit (20000) reached. Forcing exit.")
+            break
+
         time.sleep(0.03)
 
         cmd = program[y][x]
