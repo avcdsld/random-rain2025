@@ -59,14 +59,15 @@ def clear_eol():
 HEADER_ROW = 1
 GRID_ROW0 = 2
 STATUS_ROW = GRID_ROW0 + HEIGHT
-SEP_ROW = STATUS_ROW + 1
-LOG_ROW0 = STATUS_ROW + 1
+OUTPUT_ROW = STATUS_ROW + 1
+SEP_ROW = OUTPUT_ROW + 1
+LOG_ROW0 = OUTPUT_ROW + 1
 
 LOG = deque(maxlen=2000)
 
 def ensure_terminal_large_enough():
     cols, rows = term_size()
-    min_rows = 1 + HEIGHT + 1 + 1 + 1
+    min_rows = 1 + HEIGHT + 1 + 1 + 1 + 1
     if cols < WIDTH or rows < min_rows:
         term_exit()
         msg = (
@@ -131,10 +132,16 @@ def draw_status():
     clear_eol()
     cmd_repr = repr(program[y][x])
     s = f"IP:({x:2},{y:2}) Dir:({dx:+2},{dy:+2}) Cmd:{cmd_repr:^2}"
-    if output_buffer:
-        s += f" Output: {output_buffer[-40:]}"
     if string_mode:
         s += " (string mode)"
+    sys.stdout.write(s[:WIDTH].ljust(WIDTH))
+    
+    move(OUTPUT_ROW, 1)
+    clear_eol()
+    if output_buffer:
+        s = f"Output: {output_buffer[-40:]}"
+    else:
+        s = ""
     sys.stdout.write(s[:WIDTH].ljust(WIDTH))
 
 def draw_separator():
@@ -188,8 +195,12 @@ try:
         time.sleep(0.03)
 
         cmd = program[y][x]
+        current_cell = (x, y)
 
         wrote_cell = None
+        skip_highlight_cell = None
+        skip_highlight_dx = None
+        skip_highlight_dy = None
 
         if string_mode:
             if cmd == '"':
@@ -251,6 +262,9 @@ try:
             elif cmd == ',':
                 output_buffer += chr(pop())
             elif cmd == '#':
+                skip_highlight_cell = current_cell
+                skip_highlight_dx = dx  # 「#」コマンド実行時の方向を記録
+                skip_highlight_dy = dy
                 x = (x + dx) % WIDTH
                 y = (y + dy) % HEIGHT
             elif cmd == 'g':
@@ -291,10 +305,22 @@ try:
             wx, wy = wrote_cell
             draw_cell(wx, wy, False)
 
+        if skip_highlight_cell is not None and skip_highlight_dx is not None and skip_highlight_dy is not None:
+            hash_x = (prev_x - skip_highlight_dx) % WIDTH
+            hash_y = (prev_y - skip_highlight_dy) % HEIGHT
+            if skip_highlight_cell == (hash_x, hash_y):
+                draw_cell(hash_x, hash_y, False)
+                skip_highlight_cell = None
+                skip_highlight_dx = None
+                skip_highlight_dy = None
+
         if not (prev_x == x and prev_y == y):
             draw_cell(prev_x, prev_y, False)
 
-        draw_cell(x, y, True)
+        if skip_highlight_cell is None or (x, y) != skip_highlight_cell:
+            draw_cell(x, y, True)
+        else:
+            draw_cell(x, y, False)
 
         draw_status()
 
