@@ -311,4 +311,6 @@ finally:
             TTY.close()
     except Exception:
         pass
+    sys.stdout.write("\n")
+    sys.stdout.flush()
     term_exit()
